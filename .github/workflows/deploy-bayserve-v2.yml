@@ -4,10 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'products/bayserve-v2/**'
-      - 'infra/**'
-      - '.github/workflows/deploy-bayserve-v2.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -74,7 +71,6 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         run: npm run build
 
-      # 🔹 NEW: install Terraform on the runner
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:

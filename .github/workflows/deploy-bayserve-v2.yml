@@ -106,3 +106,7 @@ jobs:
             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
             -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}" \
             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
+
+
+
+

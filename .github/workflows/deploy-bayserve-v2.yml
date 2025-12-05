@@ -99,7 +99,7 @@ jobs:
 
       - name: Terraform Apply
         if: false
-        if: github.ref == 'refs/heads/main'
+        #if: github.ref == 'refs/heads/main'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform apply -auto-approve \

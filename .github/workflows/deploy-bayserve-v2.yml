@@ -74,6 +74,12 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         run: npm run build
 
+      # 🔹 NEW: install Terraform on the runner
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:

@@ -84,10 +84,12 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Terraform Init
+        if: false
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init
 
       - name: Terraform Plan
+        if: false
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform plan \
@@ -96,6 +98,7 @@ jobs:
             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
 
       - name: Terraform Apply
+        if: false
         if: github.ref == 'refs/heads/main'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |

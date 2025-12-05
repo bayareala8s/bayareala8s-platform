@@ -28,7 +28,6 @@ jobs:
         with:
           node-version: '20'
 
-      # Optional: make npm itself more tolerant to network hiccups
       - name: Configure npm retry settings
         run: |
           npm config set fetch-retries 5
@@ -40,6 +39,7 @@ jobs:
         run: |
           for i in 1 2 3; do
             echo "Attempt $i: npm install (backend)"
+            npm cache clean --force || true
             npm install && break
             echo "npm install (backend) failed, retrying in 5s..."
             sleep 5

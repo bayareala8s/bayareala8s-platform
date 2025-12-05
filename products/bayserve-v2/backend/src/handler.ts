@@ -6,6 +6,13 @@ import { explainFlowFailure } from './ai';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS';
 
+const getUserEmailFromEvent = (event: APIGatewayProxyEventV2): string | undefined => {
+  // Cast to any to avoid TypeScript complaining about authorizer type
+  const anyEvent: any = event;
+  return anyEvent.requestContext?.authorizer?.jwt?.claims?.email;
+};
+
+
 const jsonResponse = (statusCode: number, body: unknown): APIGatewayProxyResultV2 => ({
   statusCode,
   headers: { 'Content-Type': 'application/json' },
@@ -16,12 +23,15 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
   const method = (event.requestContext.http.method || 'GET') as HttpMethod;
   const path = event.rawPath || '/';
 
-  log('INFO', 'Incoming request', {
-    method,
-    path,
-    requestId: event.requestContext.requestId,
-    user: event.requestContext.authorizer?.jwt?.claims?.email,
-  });
+  const userEmail = getUserEmailFromEvent(event);
+
+log('INFO', 'Incoming request', {
+  method,
+  path,
+  requestId: event.requestContext.requestId,
+  user: userEmail,
+});
+
 
   try {
     if (path === '/health') {

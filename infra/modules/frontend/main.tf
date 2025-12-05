@@ -7,13 +7,20 @@ terraform {
   }
 }
 
-variable "product_name" { type = string }
-variable "env" { type = string }
-variable "domain_name" { type = string }
-variable "certificate_arn" { type = string }
+variable "product_name" {
+  type = string
+}
 
-provider "aws" {
-  region = var.region != null ? var.region : "us-west-2"
+variable "env" {
+  type = string
+}
+
+variable "domain_name" {
+  type = string
+}
+
+variable "certificate_arn" {
+  type = string
 }
 
 variable "region" {
@@ -21,12 +28,18 @@ variable "region" {
   default = "us-west-2"
 }
 
+provider "aws" {
+  region = var.region
+}
+
+# S3 bucket to host the frontend build artifacts
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.product_name}-${var.env}-frontend"
 }
 
 resource "aws_s3_bucket_website_configuration" "frontend_site" {
-  bucket = aws_s3_bucket_frontend.id
+  # 🔧 FIX: reference the actual bucket resource name
+  bucket = aws_s3_bucket.frontend.id
 
   index_document {
     suffix = "index.html"

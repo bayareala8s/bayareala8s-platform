@@ -28,9 +28,26 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install backend deps
+      # Optional: make npm itself more tolerant to network hiccups
+      - name: Configure npm retry settings
+        run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 1000
+          npm config set fetch-retry-maxtimeout 60000
+
+      - name: Install backend deps (with retry)
         working-directory: ${{ env.LAMBDA_BUILD_DIR }}
-        run: npm install
+        run: |
+          for i in 1 2 3; do
+            echo "Attempt $i: npm install (backend)"
+            npm install && break
+            echo "npm install (backend) failed, retrying in 5s..."
+            sleep 5
+            if [ $i -eq 3 ]; then
+              echo "npm install (backend) failed 3 times, giving up."
+              exit 1
+            fi
+          done
 
       - name: Build backend & package Lambda
         working-directory: ${{ env.LAMBDA_BUILD_DIR }}
@@ -39,9 +56,19 @@ jobs:
           npm run build
           zip -r bayserve-v2-backend.zip dist node_modules package.json
 
-      - name: Install frontend deps
+      - name: Install frontend deps (with retry)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm install
+        run: |
+          for i in 1 2 3; do
+            echo "Attempt $i: npm install (frontend)"
+            npm install && break
+            echo "npm install (frontend) failed, retrying in 5s..."
+            sleep 5
+            if [ $i -eq 3 ]; then
+              echo "npm install (frontend) failed 3 times, giving up."
+              exit 1
+            fi
+          done
 
       - name: Build frontend
         working-directory: ${{ env.FRONTEND_DIR }}
@@ -61,10 +88,16 @@ jobs:
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform plan             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip"             -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}"             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
+          terraform plan \
+            -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
+            -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}" \
+            -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform apply -auto-approve             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip"             -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}"             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
+          terraform apply -auto-approve \
+            -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
+            -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}" \
+            -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"

@@ -1,0 +1,70 @@
+name: Deploy BayServe v2 PROD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'products/bayserve-v2/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-bayserve-v2.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-west-2
+      TF_WORKING_DIR: infra/environments/prod
+      LAMBDA_BUILD_DIR: products/bayserve-v2/backend
+      FRONTEND_DIR: products/bayserve-v2/frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend deps
+        working-directory: ${{ env.LAMBDA_BUILD_DIR }}
+        run: npm install
+
+      - name: Build backend & package Lambda
+        working-directory: ${{ env.LAMBDA_BUILD_DIR }}
+        run: |
+          npm run clean || true
+          npm run build
+          zip -r bayserve-v2-backend.zip dist node_modules package.json
+
+      - name: Install frontend deps
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: npm install
+
+      - name: Build frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform plan             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip"             -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}"             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform apply -auto-approve             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip"             -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}"             -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"

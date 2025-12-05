@@ -50,6 +50,16 @@ resource "aws_apigatewayv2_route" "default" {
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
 }
 
+resource "aws_apigatewayv2_route" "health" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /health"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  # Public endpoint - no JWT required
+  authorization_type = "NONE"
+}
+
+
 resource "aws_apigatewayv2_stage" "prod" {
   api_id      = aws_apigatewayv2_api.http_api.id
   name        = "$default"

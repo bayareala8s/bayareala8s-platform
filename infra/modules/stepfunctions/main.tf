@@ -7,47 +7,63 @@ terraform {
   }
 }
 
-variable "product_name" { type = string }
-variable "env"          { type = string }
-
-provider "aws" {
-  region = "us-west-2"
+variable "product_name" {
+  type = string
 }
 
-# Simple placeholder state machine; extend per real flow logic
-resource "aws_sfn_state_machine" "flow_executor" {
-  name     = "${var.product_name}-${var.env}-flow-executor"
+variable "env" {
+  type = string
+}
+
+variable "region" {
+  type    = string
+  default = "us-west-2"
+}
+
+provider "aws" {
+  region = var.region
+}
+
+# Execution role for the state machine
+resource "aws_iam_role" "sfn_exec" {
+  name = "${var.product_name}-${var.env}-sfn-exec"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "states.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# 🔧 FIX: use the correct AWS-managed policy ARN (no 'service-role/' prefix)
+resource "aws_iam_role_policy_attachment" "sfn_basic" {
+  role       = aws_iam_role.sfn_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
+}
+
+# Simple placeholder state machine for BayServe v2 flows
+resource "aws_sfn_state_machine" "flow_execution" {
+  name     = "${var.product_name}-${var.env}-flow-execution"
   role_arn = aws_iam_role.sfn_exec.arn
 
   definition = jsonencode({
-    Comment = "BayServe v2 flow executor skeleton",
-    StartAt = "SuccessState",
+    Comment = "BayServe v2 placeholder flow execution state machine"
+    StartAt = "Success"
     States = {
-      SuccessState = {
+      Success = {
         Type = "Succeed"
       }
     }
   })
 }
 
-resource "aws_iam_role" "sfn_exec" {
-  name = "${var.product_name}-${var.env}-sfn-exec"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = { Service = "states.amazonaws.com" },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "sfn_basic" {
-  role       = aws_iam_role.sfn_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSStepFunctionsFullAccess"
-}
-
 output "state_machine_arn" {
-  value = aws_sfn_state_machine.flow_executor.arn
+  value = aws_sfn_state_machine.flow_execution.arn
 }

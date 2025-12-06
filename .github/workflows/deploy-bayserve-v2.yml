@@ -95,11 +95,7 @@ jobs:
         run: |
           aws s3 sync ${{ env.FRONTEND_DIR }}/dist s3://${{ secrets.BAYSERVE_FRONTEND_BUCKET }} --delete
 
-      - name: Invalidate CloudFront Cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.BAYSERVE_CLOUDFRONT_ID }} \
-            --paths "/*"  
+      
 
 
       - name: Terraform Init

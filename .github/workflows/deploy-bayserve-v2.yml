@@ -69,7 +69,15 @@ jobs:
 
       - name: Build frontend
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm run build
+        run: |
+          VITE_API_BASE_URL=${{ secrets.BAYSERVE_PROD_API_BASE }} \
+          VITE_COGNITO_REGION=${{ secrets.BAYSERVE_PROD_COGNITO_REGION }} \
+          VITE_COGNITO_USER_POOL_ID=${{ secrets.BAYSERVE_PROD_COGNITO_USER_POOL_ID }} \
+          VITE_COGNITO_CLIENT_ID=${{ secrets.BAYSERVE_PROD_COGNITO_CLIENT_ID }} \
+          VITE_COGNITO_DOMAIN=${{ secrets.BAYSERVE_PROD_COGNITO_DOMAIN }} \
+          VITE_COGNITO_REDIRECT_URI=${{ secrets.BAYSERVE_PROD_COGNITO_REDIRECT_URI }} \
+          npm run build
+
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

@@ -2,7 +2,7 @@ import {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { listFlows } from "./flows";
+import { listFlows, createFlow } from "./flows";
 
 // You can override this later via env var if needed
 const allowedOrigin =
@@ -53,6 +53,13 @@ export const handler = async (
   if (method === "GET" && path === "/flows") {
     const items = await listFlows();
     return jsonResponse(200, { items });
+  }
+
+  // 3b) POST /flows – create a new flow
+  if (method === "POST" && path === "/flows") {
+    const parsedBody = event.body ? JSON.parse(event.body) : {};
+    const created = await createFlow(parsedBody);
+    return jsonResponse(201, { item: created });
   }
 
   // 4) POST /ai/explain – stub implementation for now (no ai.ts needed)

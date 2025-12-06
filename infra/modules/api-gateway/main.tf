@@ -48,6 +48,16 @@ resource "aws_apigatewayv2_route" "get_flows" {
   authorization_type = "JWT"
 }
 
+# Protected POST /flows – create flow
+resource "aws_apigatewayv2_route" "create_flow" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /flows"
+
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+  authorization_type = "JWT"
+}
+
 # Protected POST /ai/explain – AI helper
 resource "aws_apigatewayv2_route" "ai_explain" {
   api_id    = aws_apigatewayv2_api.http.id
@@ -56,15 +66,6 @@ resource "aws_apigatewayv2_route" "ai_explain" {
   target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
   authorization_type = "JWT"
-}
-
-# OPTIONS /flows for CORS preflight – NO auth
-resource "aws_apigatewayv2_route" "options_flows" {
-  api_id    = aws_apigatewayv2_api.http.id
-  route_key = "OPTIONS /flows"
-
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "NONE"
 }
 
 # Optional catch-all for health, etc.

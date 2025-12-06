@@ -36,9 +36,9 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   }
 }
 
-# ---------- ROUTES ----------
+######## ROUTES ########
 
-# Protected GET /flows
+# Protected GET /flows – list flows
 resource "aws_apigatewayv2_route" "get_flows" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "GET /flows"
@@ -48,7 +48,7 @@ resource "aws_apigatewayv2_route" "get_flows" {
   authorization_type = "JWT"
 }
 
-# Protected POST /ai/explain
+# Protected POST /ai/explain – AI helper
 resource "aws_apigatewayv2_route" "ai_explain" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "POST /ai/explain"
@@ -67,7 +67,7 @@ resource "aws_apigatewayv2_route" "options_flows" {
   authorization_type = "NONE"
 }
 
-# Optional catch-all for future routes (no auth)
+# Optional catch-all for health, etc.
 resource "aws_apigatewayv2_route" "default" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "$default"
@@ -82,7 +82,6 @@ resource "aws_apigatewayv2_stage" "default_stage" {
   auto_deploy = true
 }
 
-# Lambda permission so API Gateway can invoke it
 resource "aws_lambda_permission" "allow_apigw" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"

@@ -4,7 +4,7 @@ import { log } from './logger';
  * Placeholder AI explainer.
  * In production, call Bedrock Claude or OpenAI here.
  */
-export const explainFlowFailure = async (body: { flowId?: string; error?: string }) => {
+export const explainError = async (body: { flowId?: string; error?: string }) => {
   log('INFO', 'AI explain request', body);
 
   const { flowId, error } = body;

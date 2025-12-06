@@ -308,7 +308,7 @@ const App: React.FC = () => {
                   width: "100%",
                   maxWidth: "900px",
                   marginTop: "1rem",
-                  border: "1px solid "#ddd",
+                  border: "1px solid #ddd",
                 }}
               >
                 <thead style={{ backgroundColor: "#f3f4f6" }}>

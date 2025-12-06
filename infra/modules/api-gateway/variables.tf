@@ -17,3 +17,9 @@ variable "authorizer_issuer" {
 variable "authorizer_audience" {
   type = string
 }
+
+# Where the frontend is hosted – used in CORS
+variable "cors_origin" {
+  type    = string
+  default = "https://selfserve.bayareala8s.com"
+}

@@ -1,39 +1,33 @@
-############################################
-# BayServe v2 API Gateway Module
-############################################
+locals {
+  name_prefix = "${var.product_name}-${var.env}"
+}
 
-############################################
-# HTTP API + CORS
-############################################
 resource "aws_apigatewayv2_api" "http" {
-  name          = "${var.product_name}-${var.env}-http"
+  name          = "${local.name_prefix}-http-api"
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = ["https://selfserve.bayareala8s.com"]
-    allow_methods = ["GET", "POST", "OPTIONS"]
-    allow_headers = ["Authorization", "Content-Type"]
+    allow_credentials = false
+    allow_headers     = ["authorization", "content-type"]
+    allow_methods     = ["GET", "OPTIONS", "POST"]
+    allow_origins     = [var.cors_origin]
+    max_age           = 0
   }
 }
 
-############################################
-# LAMBDA INTEGRATION
-############################################
-resource "aws_apigatewayv2_integration" "lambda_integration" {
+resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.http.id
   integration_type       = "AWS_PROXY"
   integration_uri        = var.lambda_arn
+  integration_method     = "POST"
   payload_format_version = "2.0"
 }
 
-############################################
-# COGNITO JWT AUTHORIZER
-############################################
+# JWT authorizer using Cognito
 resource "aws_apigatewayv2_authorizer" "jwt" {
-  api_id          = aws_apigatewayv2_api.http.id
-  name            = "${var.product_name}-${var.env}-jwt"
-  authorizer_type = "JWT"
-
+  api_id           = aws_apigatewayv2_api.http.id
+  name             = "${local.name_prefix}-jwt-authorizer"
+  authorizer_type  = "JWT"
   identity_sources = ["$request.header.Authorization"]
 
   jwt_configuration {
@@ -42,53 +36,55 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   }
 }
 
-############################################
-# PROTECTED ROUTES
-############################################
+# ---------- ROUTES ----------
 
-# GET /flows
-resource "aws_apigatewayv2_route" "flows_get" {
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = "GET /flows"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-  authorization_type = "JWT"
+# Protected GET /flows
+resource "aws_apigatewayv2_route" "get_flows" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /flows"
+
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+  authorization_type = "JWT"
 }
 
-# POST /ai/explain
-resource "aws_apigatewayv2_route" "ai_explain_post" {
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = "POST /ai/explain"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-  authorization_type = "JWT"
+# Protected POST /ai/explain
+resource "aws_apigatewayv2_route" "ai_explain" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /ai/explain"
+
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+  authorization_type = "JWT"
 }
 
-############################################
-# PUBLIC ROUTE: $default
-# Must be UNPROTECTED — lets CORS preflight succeed
-############################################
-resource "aws_apigatewayv2_route" "default_public" {
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = "$default"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+# OPTIONS /flows for CORS preflight – NO auth
+resource "aws_apigatewayv2_route" "options_flows" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "OPTIONS /flows"
+
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
   authorization_type = "NONE"
 }
 
-############################################
-# DEFAULT STAGE
-############################################
+# Optional catch-all for future routes (no auth)
+resource "aws_apigatewayv2_route" "default" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "$default"
+
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "NONE"
+}
+
 resource "aws_apigatewayv2_stage" "default_stage" {
   api_id      = aws_apigatewayv2_api.http.id
   name        = "$default"
   auto_deploy = true
 }
 
-############################################
-# PERMISSIONS: Allow API to invoke Lambda
-############################################
-resource "aws_lambda_permission" "apigw_invoke" {
-  statement_id  = "AllowAPIGatewayInvoke"
+# Lambda permission so API Gateway can invoke it
+resource "aws_lambda_permission" "allow_apigw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_arn
   principal     = "apigateway.amazonaws.com"

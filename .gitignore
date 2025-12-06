@@ -9,4 +9,5 @@ dist/
 
 # Mac
 .DS_Store
+products/bayserve-v2/backend/*.zip
 

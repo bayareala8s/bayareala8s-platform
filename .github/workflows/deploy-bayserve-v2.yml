@@ -2,19 +2,17 @@ name: Deploy BayServe v2 PROD
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-west-2
+  TF_WORKING_DIR: infra/environments/prod
+  LAMBDA_BUILD_DIR: products/bayserve-v2/backend
+  FRONTEND_DIR: products/bayserve-v2/frontend
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    env:
-      AWS_REGION: us-west-2
-      TF_WORKING_DIR: infra/environments/prod
-      LAMBDA_BUILD_DIR: products/bayserve-v2/backend
-      FRONTEND_DIR: products/bayserve-v2/frontend
 
     steps:
       - name: Checkout
@@ -23,49 +21,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Configure npm retry settings
-        run: |
-          npm config set fetch-retries 5
-          npm config set fetch-retry-mintimeout 1000
-          npm config set fetch-retry-maxtimeout 60000
+      # Backend
+      - name: Install backend deps
+        working-directory: ${{ env.LAMBDA_BUILD_DIR }}
+        run: npm ci
 
-      - name: Install backend deps (with retry)
+      - name: Build backend
+        working-directory: ${{ env.LAMBDA_BUILD_DIR }}
+        run: npm run build
+
+      - name: Package Lambda
         working-directory: ${{ env.LAMBDA_BUILD_DIR }}
         run: |
-          for i in 1 2 3; do
-            echo "Attempt $i: npm install (backend)"
-            npm cache clean --force || true
-            npm install && break
-            echo "npm install (backend) failed, retrying in 5s..."
-            sleep 5
-            if [ $i -eq 3 ]; then
-              echo "npm install (backend) failed 3 times, giving up."
-              exit 1
-            fi
-          done
-
-      - name: Build backend & package Lambda
-        working-directory: ${{ env.LAMBDA_BUILD_DIR }}
-        run: |
-          npm run clean || true
-          npm run build
           zip -r bayserve-v2-backend.zip dist node_modules package.json
 
-      - name: Install frontend deps (with retry)
+      # Frontend
+      - name: Install frontend deps
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: |
-          for i in 1 2 3; do
-            echo "Attempt $i: npm install (frontend)"
-            npm install && break
-            echo "npm install (frontend) failed, retrying in 5s..."
-            sleep 5
-            if [ $i -eq 3 ]; then
-              echo "npm install (frontend) failed 3 times, giving up."
-              exit 1
-            fi
-          done
+        run: npm ci
 
       - name: Build frontend
         working-directory: ${{ env.FRONTEND_DIR }}
@@ -78,12 +53,6 @@ jobs:
           VITE_COGNITO_REDIRECT_URI=${{ secrets.BAYSERVE_PROD_COGNITO_REDIRECT_URI }} \
           npm run build
 
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -91,36 +60,29 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload frontend to S3
-        run: |
-          aws s3 sync ${{ env.FRONTEND_DIR }}/dist s3://${{ secrets.BAYSERVE_FRONTEND_BUCKET }} --delete
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
 
-      
-
-
-      - name: Terraform Init
-        if: false
+      - name: Terraform init
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform init
+        run: terraform init -input=false
 
-      - name: Terraform Plan
-        if: false
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          terraform plan \
-            -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
-            -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}" \
-            -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
-
-      - name: Terraform Apply
-        if: false
-        #if: github.ref == 'refs/heads/main'
+      - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform apply -auto-approve \
             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
-            -var "domain_name=${{ secrets.BAYSERVE_PROD_DOMAIN }}" \
-            -var "certificate_arn=${{ secrets.BAYSERVE_PROD_CERT_ARN }}"
+            -var "domain_name=selfserve.bayareala8s.com" \
+            -var "certificate_arn=arn:aws:acm:us-east-1:277374794397:certificate/d9b4d687-e6db-4f7b-a0fe-71786fe85b26"
 
+      - name: Upload frontend to S3
+        run: |
+          aws s3 sync ${{ env.FRONTEND_DIR }}/dist s3://${{ secrets.BAYSERVE_FRONTEND_BUCKET }} --delete
 
- 
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.BAYSERVE_CLOUDFRONT_ID }} \
+            --paths "/*"

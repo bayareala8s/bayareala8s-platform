@@ -44,7 +44,7 @@ function parseTokensFromHash(hash: string): { idToken?: string; accessToken?: st
 
 const TOKEN_STORAGE_KEY = 'bayserve_v2_id_token';
 
-export const App: React.FC = () => {
+  const App: React.FC = () => {
   // --- Auth state ---
   const [idToken, setIdToken] = useState<string | null>(() => {
     return localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -437,3 +437,4 @@ export const App: React.FC = () => {
     </div>
   );
 };
+export default App;

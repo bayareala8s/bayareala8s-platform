@@ -37,24 +37,6 @@ jobs:
         run: |
           zip -r bayserve-v2-backend.zip dist node_modules package.json
 
-      # Frontend
-      - name: Install frontend deps
-        working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm ci
-
-      - name: Build frontend
-        working-directory: ${{ env.FRONTEND_DIR }}
-        env:
-          VITE_API_BASE_URL: ${{ secrets.BAYSERVE_PROD_API_BASE }}
-          VITE_COGNITO_REGION: ${{ secrets.BAYSERVE_PROD_COGNITO_REGION }}
-          VITE_COGNITO_USER_POOL_ID: ${{ secrets.BAYSERVE_PROD_COGNITO_USER_POOL_ID }}
-          VITE_COGNITO_CLIENT_ID: ${{ secrets.BAYSERVE_PROD_COGNITO_CLIENT_ID }}
-          VITE_COGNITO_DOMAIN: ${{ secrets.BAYSERVE_PROD_COGNITO_DOMAIN }}
-          VITE_COGNITO_REDIRECT_URI: ${{ secrets.BAYSERVE_PROD_COGNITO_REDIRECT_URI }}
-        run: |
-          npm ci
-          npm run build
-
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -79,6 +61,28 @@ jobs:
             -var "lambda_artifact_path=${{ github.workspace }}/${{ env.LAMBDA_BUILD_DIR }}/bayserve-v2-backend.zip" \
             -var "domain_name=selfserve.bayareala8s.com" \
             -var "certificate_arn=arn:aws:acm:us-east-1:277374794397:certificate/d9b4d687-e6db-4f7b-a0fe-71786fe85b26"
+
+      - name: Get API endpoint
+        id: api
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: echo "API_ENDPOINT=$(terraform output -raw bayserve_v2_api_endpoint)" >> "$GITHUB_OUTPUT"
+
+      # Frontend
+      - name: Install frontend deps
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          VITE_API_BASE_URL: ${{ steps.api.outputs.API_ENDPOINT }}
+          VITE_COGNITO_REGION: ${{ secrets.BAYSERVE_PROD_COGNITO_REGION }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.BAYSERVE_PROD_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ secrets.BAYSERVE_PROD_COGNITO_CLIENT_ID }}
+          VITE_COGNITO_DOMAIN: ${{ secrets.BAYSERVE_PROD_COGNITO_DOMAIN }}
+          VITE_COGNITO_REDIRECT_URI: ${{ secrets.BAYSERVE_PROD_COGNITO_REDIRECT_URI }}
+        run: |
+          npm run build
 
       - name: Upload frontend to S3
         run: |

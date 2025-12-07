@@ -30,6 +30,9 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("flows");
 
+  const [newFlowName, setNewFlowName] = useState("");
+  const [creating, setCreating] = useState(false);
+
   const [aiInput, setAiInput] = useState("");
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -56,8 +59,6 @@ const App: React.FC = () => {
           Authorization: `Bearer ${idToken}`,
         },
       });
-      const [newFlowName, setNewFlowName] = useState("");
-      const [creating, setCreating] = useState(false);
 
       if (!res.ok) {
         throw new Error(`Failed to load flows (${res.status})`);
@@ -66,58 +67,58 @@ const App: React.FC = () => {
       const data = await res.json();
       setFlows(data.items || []);
     } catch (err) {
-
-      const createNewFlow = async () => {
-        if (!isAuthenticated || !idToken) {
-          setError("Not authenticated");
-          return;
-        }
-        if (!newFlowName.trim()) {
-          setError("Flow name is required");
-          return;
-        }
-
-        try {
-          setCreating(true);
-          setError(null);
-
-          const res = await fetch(`${apiBase}/flows`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-              name: newFlowName.trim(),
-              status: "DRAFT",
-            }),
-          });
-
-          if (!res.ok) {
-            throw new Error(`Failed to create flow (${res.status})`);
-          }
-
-          const data = await res.json();
-          const created: Flow | undefined = data.item;
-
-          if (created) {
-            setFlows((prev) => [created, ...prev]);
-          } else {
-            await fetchFlows();
-          }
-
-          setNewFlowName("");
-        } catch (err) {
-          console.error("Error creating flow", err);
-          setError((err as Error).message || "Create failed");
-        } finally {
-          setCreating(false);
-        }
-      };
       console.error("Error loading flows", err);
       setError((err as Error).message || "Load failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createNewFlow = async () => {
+    if (!isAuthenticated || !idToken) {
+      setError("Not authenticated");
+      return;
+    }
+    if (!newFlowName.trim()) {
+      setError("Flow name is required");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      setError(null);
+
+      const res = await fetch(`${apiBase}/flows`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          name: newFlowName.trim(),
+          status: "DRAFT",
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to create flow (${res.status})`);
+      }
+
+      const data = await res.json();
+      const created: Flow | undefined = data.item;
+
+      if (created) {
+        setFlows((prev) => [created, ...prev]);
+      } else {
+        await fetchFlows();
+      }
+
+      setNewFlowName("");
+    } catch (err) {
+      console.error("Error creating flow", err);
+      setError((err as Error).message || "Create failed");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -333,13 +334,55 @@ const App: React.FC = () => {
               </p>
             )}
 
+            {isAuthenticated && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.5rem",
+                  marginTop: "0.75rem",
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="New flow name"
+                  value={newFlowName}
+                  onChange={(e) => setNewFlowName(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "0.4rem 0.6rem",
+                    borderRadius: "0.375rem",
+                    border: "1px solid #d1d5db",
+                  }}
+                />
+                <button
+                  onClick={createNewFlow}
+                  disabled={creating || !newFlowName.trim()}
+                  style={{
+                    padding: "0.4rem 0.9rem",
+                    borderRadius: "0.375rem",
+                    border: "none",
+                    backgroundColor:
+                      creating || !newFlowName.trim() ? "#9ca3af" : "#2563eb",
+                    color: "white",
+                    cursor:
+                      creating || !newFlowName.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {creating ? "Creating…" : "New Flow"}
+                </button>
+              </div>
+            )}
+
             {!loading && !error && isAuthenticated && (
               <table
                 style={{
                   borderCollapse: "collapse",
                   width: "100%",
                   maxWidth: "900px",
-                  marginTop: "1rem",
+                   marginTop: "1rem",
                   border: "1px solid #ddd",
                 }}
               >
@@ -349,66 +392,29 @@ const App: React.FC = () => {
                       style={{
                         padding: "0.5rem 0.75rem",
                         textAlign: "left",
-                      }}
-                    >
-                      ID
-                    </th>
-                    <th
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      Name
-                    </th>
-                    <th
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    marginBottom: "0.75rem",
-                  }}
-                >
-                  <input
-                    type="text"
-                    placeholder="New flow name"
-                    value={newFlowName}
-                    onChange={(e) => setNewFlowName(e.target.value)}
-                    style={{
-                      flex: 1,
-                      padding: "0.4rem 0.6rem",
-                      borderRadius: "0.375rem",
-                      border: "1px solid #d1d5db",
-                    }}
-                  />
-                  <button
-                    onClick={createNewFlow}
-                    disabled={creating || !newFlowName.trim()}
-                    style={{
-                      padding: "0.4rem 0.9rem",
-                      borderRadius: "0.375rem",
-                      border: "none",
-                      backgroundColor:
-                        creating || !newFlowName.trim() ? "#9ca3af" : "#2563eb",
-                      color: "white",
-                      cursor:
-                        creating || !newFlowName.trim() ? "not-allowed" : "pointer",
-                      fontSize: "0.9rem",
-                    }}
-                  >
-                    {creating ? "Creating…" : "New Flow"}
-                  </button>
-                </div>
+                       }}
+                     >
+                       ID
+                     </th>
+                     <th
+                       style={{
+                         padding: "0.5rem 0.75rem",
+                         textAlign: "left",
+                       }}
+                     >
+                       Name
+                     </th>
+                     <th
+                       style={{
+                         padding: "0.5rem 0.75rem",
+                         textAlign: "left",
+                       }}
+                     >
+                       Status
+                     </th>
+                   </tr>
+                 </thead>
+                 <tbody>
                   {flows.map((flow) => (
                     <tr key={flow.id}>
                       <td

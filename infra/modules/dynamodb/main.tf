@@ -14,16 +14,7 @@ provider "aws" {
   region = "us-west-2"
 }
 
-resource "aws_dynamodb_table" "flows" {
-  name         = "${var.product_name}-${var.env}-flows"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "id"
 
-  attribute {
-    name = "id"
-    type = "S"
-  }
-}
 
 
 

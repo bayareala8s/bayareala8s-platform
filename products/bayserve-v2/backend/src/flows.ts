@@ -11,12 +11,35 @@ if (!tableName) {
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
+export interface SftpSourceConfig {
+  type: 'sftp';
+  host: string;
+  port?: number;
+  username?: string;
+  authMethod?: 'password' | 'key';
+  passwordSecretId?: string;
+  privateKeySecretId?: string;
+  remotePath?: string;
+}
+
+export interface S3TargetConfig {
+  type: 's3';
+  bucket: string;
+  prefix?: string;
+  kmsKeyId?: string;
+}
+
 export interface Flow {
   id: string;
   name: string;
   status: string;
   createdAt: string;
   updatedAt: string;
+  // Optional extra fields so a flow can represent
+  // a reusable connection definition.
+  type?: 'FLOW' | 'CONNECTION';
+  sourceConfig?: SftpSourceConfig;
+  targetConfig?: S3TargetConfig;
 }
 
 export const listFlows = async (): Promise<Flow[]> => {
@@ -37,6 +60,9 @@ export const createFlow = async (input: Partial<Flow>): Promise<Flow> => {
     status: input.status || 'DRAFT',
     createdAt: now,
     updatedAt: now,
+    type: input.type ?? 'FLOW',
+    sourceConfig: input.sourceConfig,
+    targetConfig: input.targetConfig,
   };
 
   await docClient.send(new PutCommand({

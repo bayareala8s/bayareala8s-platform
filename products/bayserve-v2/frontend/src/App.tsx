@@ -7,9 +7,22 @@ interface Flow {
   id: string;
   name: string;
   status: string;
+  type?: "FLOW" | "CONNECTION";
+  sourceConfig?: {
+    type: "sftp";
+    host: string;
+    port?: number;
+    username?: string;
+    remotePath?: string;
+  };
+  targetConfig?: {
+    type: "s3";
+    bucket: string;
+    prefix?: string;
+  };
 }
 
-type Tab = "flows" | "executions" | "ai" | "settings";
+type Tab = "flows" | "connections" | "executions" | "ai" | "settings";
 
 const apiBase =
   import.meta.env.VITE_API_BASE_URL ||
@@ -32,6 +45,16 @@ const App: React.FC = () => {
 
   const [newFlowName, setNewFlowName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Connection configuration form state
+  const [connectionName, setConnectionName] = useState("");
+  const [sftpHost, setSftpHost] = useState("");
+  const [sftpPort, setSftpPort] = useState(22);
+  const [sftpUsername, setSftpUsername] = useState("");
+  const [sftpRemotePath, setSftpRemotePath] = useState("");
+  const [s3Bucket, setS3Bucket] = useState("");
+  const [s3Prefix, setS3Prefix] = useState("");
+  const [savingConnection, setSavingConnection] = useState(false);
 
   const [aiInput, setAiInput] = useState("");
   const [aiResponse, setAiResponse] = useState<string | null>(null);
@@ -119,6 +142,73 @@ const App: React.FC = () => {
       setError((err as Error).message || "Create failed");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const createConnection = async () => {
+    if (!isAuthenticated || !idToken) {
+      setError("Not authenticated");
+      return;
+    }
+    if (!connectionName.trim() || !sftpHost.trim() || !s3Bucket.trim()) {
+      setError("Name, SFTP host, and S3 bucket are required");
+      return;
+    }
+
+    try {
+      setSavingConnection(true);
+      setError(null);
+
+      const res = await fetch(`${apiBase}/flows`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          name: connectionName.trim(),
+          status: "DRAFT",
+          type: "CONNECTION",
+          sourceConfig: {
+            type: "sftp",
+            host: sftpHost.trim(),
+            port: sftpPort,
+            username: sftpUsername.trim() || undefined,
+            remotePath: sftpRemotePath.trim() || undefined,
+          },
+          targetConfig: {
+            type: "s3",
+            bucket: s3Bucket.trim(),
+            prefix: s3Prefix.trim() || undefined,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to create connection (${res.status})`);
+      }
+
+      const data = await res.json();
+      const created: Flow | undefined = data.item;
+
+      if (created) {
+        setFlows((prev) => [created, ...prev]);
+      } else {
+        await fetchFlows();
+      }
+
+      setConnectionName("");
+      setSftpHost("");
+      setSftpPort(22);
+      setSftpUsername("");
+      setSftpRemotePath("");
+      setS3Bucket("");
+      setS3Prefix("");
+    } catch (err) {
+      console.error("Error creating connection", err);
+      setError((err as Error).message || "Create connection failed");
+    } finally {
+      setSavingConnection(false);
     }
   };
 
@@ -260,6 +350,23 @@ const App: React.FC = () => {
             }}
           >
             Flows
+          </button>
+          <button
+            onClick={() => setTab("connections")}
+            style={{
+              display: "block",
+              width: "100%",
+              textAlign: "left",
+              padding: "0.5rem 0.75rem",
+              marginBottom: "0.25rem",
+              borderRadius: "0.375rem",
+              border: "none",
+              backgroundColor:
+                tab === "connections" ? "#e5e7eb" : "transparent",
+              cursor: "pointer",
+            }}
+          >
+            Connections
           </button>
           <button
             onClick={() => setTab("executions")}
@@ -460,6 +567,195 @@ const App: React.FC = () => {
                   )}
                 </tbody>
               </table>
+            )}
+          </section>
+        )}
+
+        {tab === "connections" && (
+          <section>
+            <h1>Connections</h1>
+            <p style={{ color: "555" }}>
+              Configure SFTP source and S3 target endpoints for file transfers.
+            </p>
+
+            {!isAuthenticated && !authLoading && (
+              <p style={{ color: "#b91c1c", marginTop: "0.75rem" }}>
+                Please sign in to manage connections.
+              </p>
+            )}
+
+            {error && (
+              <p style={{ color: "red", marginTop: "0.5rem" }}>
+                Error: {error}
+              </p>
+            )}
+
+            {isAuthenticated && (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "0.75rem",
+                    maxWidth: "900px",
+                    marginTop: "1rem",
+                  }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Connection name"
+                    value={connectionName}
+                    onChange={(e) => setConnectionName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SFTP host"
+                    value={sftpHost}
+                    onChange={(e) => setSftpHost(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    placeholder="SFTP port"
+                    value={sftpPort}
+                    onChange={(e) =>
+                      setSftpPort(Number(e.target.value || 22))
+                    }
+                  />
+                  <input
+                    type="text"
+                    placeholder="SFTP username (optional)"
+                    value={sftpUsername}
+                    onChange={(e) => setSftpUsername(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="SFTP remote path (optional)"
+                    value={sftpRemotePath}
+                    onChange={(e) => setSftpRemotePath(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="S3 bucket"
+                    value={s3Bucket}
+                    onChange={(e) => setS3Bucket(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="S3 prefix (optional)"
+                    value={s3Prefix}
+                    onChange={(e) => setS3Prefix(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginTop: "0.75rem" }}>
+                  <button
+                    onClick={createConnection}
+                    disabled={
+                      savingConnection ||
+                      !connectionName.trim() ||
+                      !sftpHost.trim() ||
+                      !s3Bucket.trim()
+                    }
+                    style={{
+                      padding: "0.5rem 1rem",
+                      borderRadius: "0.375rem",
+                      border: "none",
+                      backgroundColor: "#2563eb",
+                      color: "white",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {savingConnection ? "Saving…" : "Save Connection"}
+                  </button>
+                </div>
+
+                <h2 style={{ marginTop: "1.5rem" }}>Existing connections</h2>
+                <table
+                  style={{
+                    borderCollapse: "collapse",
+                    width: "100%",
+                    maxWidth: "900px",
+                    marginTop: "0.75rem",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <thead style={{ backgroundColor: "#f3f4f6" }}>
+                    <tr>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Name
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        SFTP host
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        S3 bucket
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {flows
+                      .filter((f) => f.type === "CONNECTION")
+                      .map((conn) => (
+                        <tr key={conn.id}>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.75rem",
+                              borderTop: "1px solid #eee",
+                            }}
+                          >
+                            {conn.name}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.75rem",
+                              borderTop: "1px solid #eee",
+                            }}
+                          >
+                            {conn.sourceConfig?.host || "-"}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.75rem",
+                              borderTop: "1px solid #eee",
+                            }}
+                          >
+                            {conn.targetConfig?.bucket || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    {flows.filter((f) => f.type === "CONNECTION").length ===
+                      0 && (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          style={{
+                            padding: "0.75rem",
+                            textAlign: "center",
+                            color: "#777",
+                          }}
+                        >
+                          No connections configured yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </>
             )}
           </section>
         )}

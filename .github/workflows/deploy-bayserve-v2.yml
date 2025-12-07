@@ -93,3 +93,4 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.BAYSERVE_CLOUDFRONT_ID }} \
             --paths "/*"
+

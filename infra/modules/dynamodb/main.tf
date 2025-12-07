@@ -62,8 +62,6 @@ resource "aws_dynamodb_table" "jobs" {
     range_key       = "flow_id"
     projection_type = "ALL"
   }
-
-  tags = local.tags
 }
 
 output "flows_table_name" {

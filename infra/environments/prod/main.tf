@@ -31,6 +31,13 @@ module "bayserve_v2_dynamodb" {
   env          = "prod"
 }
 
+# DynamoDB for jobs
+module "bayserve_v2_dynamodb" {
+  source       = "../../modules/dynamodb"
+  product_name = "bayflow"
+  env          = "prod"
+}
+
 # Step Functions skeleton
 module "bayserve_v2_sfn" {
   source       = "../../modules/stepfunctions"

@@ -6,7 +6,10 @@ const bedrockModelId = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-sonne
 
 const bedrockClient = new BedrockRuntimeClient({ region: bedrockRegion });
 
-interface ExplainRequest {
+// Use an index signature so this can be passed where
+// Record<string, unknown> is expected by the AWS SDK types.
+export interface ExplainRequest {
+  [key: string]: unknown;
   flowId?: string;
   error?: string;
   flowDescription?: string;

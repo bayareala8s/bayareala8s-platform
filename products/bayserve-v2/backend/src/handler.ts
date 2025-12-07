@@ -3,6 +3,7 @@ import {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { listFlows, createFlow } from "./flows";
+import { explain } from "./ai";
 
 // You can override this later via env var if needed
 const allowedOrigin =
@@ -62,13 +63,11 @@ export const handler = async (
     return jsonResponse(201, { item: created });
   }
 
-  // 4) POST /ai/explain – stub implementation for now (no ai.ts needed)
+  // 4) POST /ai/explain – call Bedrock-backed explainer
   if (method === "POST" && path === "/ai/explain") {
     const parsedBody = event.body ? JSON.parse(event.body) : {};
-    return jsonResponse(200, {
-      explanation:
-        "AI Assistant is not wired to a model yet. You sent: " + JSON.stringify(parsedBody),
-    });
+    const result = await explain(parsedBody);
+    return jsonResponse(200, result);
   }
 
   // 5) Fallback

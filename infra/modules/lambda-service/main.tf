@@ -45,6 +45,29 @@ resource "aws_iam_role_policy_attachment" "lambda_sfn" {
   policy_arn = "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
 }
 
+resource "aws_iam_role_policy" "lambda_bedrock_invoke" {
+  name = "${var.product_name}-${var.env}-lambda-bedrock-invoke"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:Converse",
+          "bedrock:ConverseStream",
+        ]
+        Resource = [
+          "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_lambda_function" "api" {
   function_name = "${var.product_name}-${var.env}-api"
   role          = aws_iam_role.lambda_exec.arn
@@ -52,6 +75,7 @@ resource "aws_lambda_function" "api" {
   runtime       = "nodejs20.x"
   filename      = var.artifact_path
   timeout       = 30
+  source_code_hash = filebase64sha256(var.artifact_path)
 
   environment {
     variables = {
@@ -59,6 +83,8 @@ resource "aws_lambda_function" "api" {
       PRODUCT_NAME           = var.product_name
       FLOWS_TABLE_NAME       = var.flows_table_name
       FLOW_STATE_MACHINE_ARN = var.state_machine_arn
+      BEDROCK_REGION         = "us-east-1"
+      BEDROCK_MODEL_ID       = "anthropic.claude-3-sonnet-20240229-v1:0"
     }
   }
 }

@@ -1,23 +1,63 @@
+import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { log } from './logger';
 
-/**
- * Placeholder AI explainer.
- * In production, call Bedrock Claude or OpenAI here.
- */
-export const explainError = async (body: { flowId?: string; error?: string }) => {
+const bedrockRegion = process.env.BEDROCK_REGION || 'us-east-1';
+const bedrockModelId = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-sonnet-20240229-v1:0';
+
+const bedrockClient = new BedrockRuntimeClient({ region: bedrockRegion });
+
+interface ExplainRequest {
+  flowId?: string;
+  error?: string;
+  flowDescription?: string;
+  question?: string;
+}
+
+export interface ExplainResponse {
+  explanation: string;
+}
+
+export const explain = async (body: ExplainRequest): Promise<ExplainResponse> => {
   log('INFO', 'AI explain request', body);
 
-  const { flowId, error } = body;
+  const { flowId, error, flowDescription, question } = body;
 
-  // TODO: Replace this with real Bedrock Claude call
-  const explanation = `This is a placeholder AI explanation for flow ${flowId ?? 'unknown'} with error: ${error ?? 'n/a'}. In production, this will call Bedrock Claude to generate a human-friendly explanation and remediation steps.`;
+  const userPrompt = [
+    'You are an assistant helping users understand data ingestion flows and errors.',
+    flowId ? `Flow ID: ${flowId}` : '',
+    flowDescription ? `Flow description:\n${flowDescription}` : '',
+    error ? `Recent error:\n${error}` : '',
+    question ? `User question:\n${question}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 
-  return {
-    explanation,
-    suggestions: [
-      'Verify source and target credentials',
-      'Check file size and format constraints',
-      'Review recent configuration changes',
-    ],
-  };
+  try {
+    const command = new ConverseCommand({
+      modelId: bedrockModelId,
+      messages: [
+        {
+          role: 'user',
+          content: [{ text: userPrompt }],
+        },
+      ],
+      inferenceConfig: {
+        maxTokens: 512,
+        temperature: 0.3,
+      },
+    });
+
+    const result = await bedrockClient.send(command);
+
+    const explanation =
+      result.output?.message?.content
+        ?.map((c) => c.text || '')
+        .join('\n')
+        .trim() || 'No explanation generated.';
+
+    return { explanation };
+  } catch (err) {
+    log('ERROR', 'Bedrock explain failed', { error: String(err) });
+    return { explanation: 'AI explanation is temporarily unavailable.' };
+  }
 };

@@ -32,7 +32,7 @@ module "bayserve_v2_dynamodb" {
 }
 
 # DynamoDB for jobs
-module "bayserve_v2_dynamodb" {
+module "bayflow_dynamodb" {
   source       = "../../modules/dynamodb"
   product_name = "bayflow"
   env          = "prod"

@@ -669,7 +669,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <h2 style={{ marginTop: "1.5rem" }}>Existing connections</h2>
+                <h2 style={{ marginTop: "1.5rem" }}>Existing flows (all)</h2>
                 <table
                   style={{
                     borderCollapse: "collapse",
@@ -708,38 +708,35 @@ const App: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {flows
-                      .filter((f) => f.type === "CONNECTION")
-                      .map((conn) => (
-                        <tr key={conn.id}>
-                          <td
-                            style={{
-                              padding: "0.5rem 0.75rem",
-                              borderTop: "1px solid #eee",
-                            }}
-                          >
-                            {conn.name}
-                          </td>
-                          <td
-                            style={{
-                              padding: "0.5rem 0.75rem",
-                              borderTop: "1px solid #eee",
-                            }}
-                          >
-                            {conn.sourceConfig?.host || "-"}
-                          </td>
-                          <td
-                            style={{
-                              padding: "0.5rem 0.75rem",
-                              borderTop: "1px solid #eee",
-                            }}
-                          >
-                            {conn.targetConfig?.bucket || "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    {flows.filter((f) => f.type === "CONNECTION").length ===
-                      0 && (
+                    {flows.map((conn) => (
+                      <tr key={conn.id}>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          {conn.name}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          {conn.sourceConfig?.host || "-"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          {conn.targetConfig?.bucket || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                    {flows.length === 0 && (
                       <tr>
                         <td
                           colSpan={3}
@@ -749,7 +746,7 @@ const App: React.FC = () => {
                             color: "#777",
                           }}
                         >
-                          No connections configured yet.
+                          No flows found yet.
                         </td>
                       </tr>
                     )}

@@ -25,11 +25,11 @@ module "bayserve_v2_cognito" {
 }
 
 # DynamoDB for flows
-#module "bayserve_v2_dynamodb" {
-#  source       = "../../modules/dynamodb"
-#  product_name = "bayserve-v2"
-#  env          = "prod"
-#}
+module "bayserve_v2_dynamodb" {
+  source       = "../../modules/dynamodb"
+  product_name = "bayserve-v2"
+  env          = "prod"
+}
 
 # DynamoDB for jobs
 #module "bayflow_dynamodb" {

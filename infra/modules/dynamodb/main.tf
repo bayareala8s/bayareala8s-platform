@@ -67,9 +67,9 @@ resource "aws_dynamodb_table" "jobs" {
 }
 
 output "flows_table_name" {
-  value = aws_dynamodb_table.flows.name
+  value = length(aws_dynamodb_table.flows) > 0 ? aws_dynamodb_table.flows[0].name : null
 }
 
 output "jobs_table_name" {
-  value = aws_dynamodb_table.jobs.name
+  value = length(aws_dynamodb_table.jobs) > 0 ? aws_dynamodb_table.jobs[0].name : null
 }

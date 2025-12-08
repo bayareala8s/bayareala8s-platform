@@ -50,6 +50,16 @@ export const handler = async (
     return jsonResponse(200, { ok: true });
   }
 
+  // 2b) Settings endpoint for frontend Settings page
+  if (method === "GET" && path === "/settings") {
+    return jsonResponse(200, {
+      environment: process.env.NODE_ENV ?? "unknown",
+      region: process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? "us-west-2",
+      product: process.env.PRODUCT_NAME ?? "bayserve-v2",
+      tenantId: process.env.TENANT_ID ?? "default",
+    });
+  }
+
   // 3) GET /flows – this is what the UI is calling
   if (method === "GET" && path === "/flows") {
     const items = await listFlows();

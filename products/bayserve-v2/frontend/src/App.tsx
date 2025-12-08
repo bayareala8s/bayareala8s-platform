@@ -61,6 +61,15 @@ const App: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Settings data fetched from backend
+  const [settings, setSettings] = useState<{
+    environment?: string;
+    region?: string;
+    product?: string;
+    tenantId?: string;
+  } | null>(null);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+
   /**
    * Fetch flows from the backend.
    * Requires the user to be authenticated and an idToken present.
@@ -257,6 +266,40 @@ const App: React.FC = () => {
       fetchFlows();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, isAuthenticated, idToken]);
+
+  // Load settings when Settings tab is opened
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!isAuthenticated || !idToken) {
+        setSettings(null);
+        return;
+      }
+
+      try {
+        setSettingsError(null);
+        const res = await fetch(`${apiBase}/settings`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load settings (${res.status})`);
+        }
+
+        const data = await res.json();
+        setSettings(data);
+      } catch (err) {
+        console.error("Error loading settings", err);
+        setSettingsError((err as Error).message || "Failed to load settings");
+      }
+    };
+
+    if (tab === "settings") {
+      fetchSettings();
+    }
   }, [tab, isAuthenticated, idToken]);
 
   return (
@@ -837,10 +880,44 @@ const App: React.FC = () => {
         {tab === "settings" && (
           <section>
             <h1>Settings</h1>
-            <p style={{ color: "#555" }}>
-              Environment: PROD. In a real deployment, show Cognito user,
-              tenant, region, etc.
-            </p>
+            {!isAuthenticated && !authLoading && (
+              <p style={{ color: "#b91c1c", marginTop: "0.75rem" }}>
+                Please sign in to view settings.
+              </p>
+            )}
+
+            {settingsError && (
+              <p style={{ color: "red", marginTop: "0.5rem" }}>
+                Error: {settingsError}
+              </p>
+            )}
+
+            {isAuthenticated && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "0.375rem",
+                  border: "1px solid #e5e7eb",
+                  maxWidth: "500px",
+                  backgroundColor: "#f9fafb",
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: "1rem",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Environment
+                </h2>
+                <p>Environment: {settings?.environment ?? "unknown"}</p>
+                <p>Region: {settings?.region ?? "unknown"}</p>
+                <p>Product: {settings?.product ?? "bayserve-v2"}</p>
+                <p>Tenant: {settings?.tenantId ?? "default"}</p>
+                {user?.email && <p>User email: {user.email}</p>}
+              </div>
+            )}
           </section>
         )}
       </main>

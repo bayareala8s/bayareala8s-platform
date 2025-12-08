@@ -70,6 +70,24 @@ const App: React.FC = () => {
   } | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
+  // Decode Cognito ID token to derive a stable user identifier for Settings
+  const decodeJwt = (token: string | null) => {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    try {
+      return JSON.parse(atob(parts[1]));
+    } catch {
+      return null;
+    }
+  };
+
+  const decodedToken = decodeJwt(idToken ?? null);
+  const settingsUserLabel =
+    (decodedToken && (decodedToken.email || decodedToken["cognito:username"])) ||
+    user?.email ||
+    "unknown";
+
   /**
    * Fetch flows from the backend.
    * Requires the user to be authenticated and an idToken present.
@@ -915,7 +933,7 @@ const App: React.FC = () => {
                 <p>Region: {settings?.region ?? "unknown"}</p>
                 <p>Product: {settings?.product ?? "bayserve-v2"}</p>
                 <p>Tenant: {settings?.tenantId ?? "default"}</p>
-                {user?.email && <p>User email: {user.email}</p>}
+                <p>User: {settingsUserLabel}</p>
               </div>
             )}
           </section>

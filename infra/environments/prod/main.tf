@@ -38,6 +38,13 @@ module "bayflow_dynamodb" {
   env          = "prod"
 }
 
+# S3 for jobs
+module "bayflow_s3" {
+  source       = "../../modules/s3"
+  product_name = "bayflow"
+  env          = "prod"
+}
+
 # Step Functions skeleton
 module "bayserve_v2_sfn" {
   source       = "../../modules/stepfunctions"

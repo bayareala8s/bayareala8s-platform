@@ -36,6 +36,39 @@ resource "aws_s3_bucket_notification" "landing_eventbridge" {
   eventbridge = true
 }
 
+resource "aws_s3_bucket_public_access_block" "pab" {
+  for_each = {
+    landing = aws_s3_bucket.landing.id
+    target  = aws_s3_bucket.target.id
+    config  = aws_s3_bucket.config.id
+  }
+
+  bucket                  = each.value
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "sse" {
+  for_each = {
+    landing = aws_s3_bucket.landing.id
+    target  = aws_s3_bucket.target.id
+    config  = aws_s3_bucket.config.id
+  }
+
+  bucket = each.value
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+
+
+
 ####################
 # Outputs
 ####################

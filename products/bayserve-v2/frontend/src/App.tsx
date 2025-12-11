@@ -14,6 +14,9 @@ interface Flow {
     port?: number;
     username?: string;
     remotePath?: string;
+    authMethod?: "password" | "key";
+    passwordSecretId?: string;
+    privateKeySecretId?: string;
   };
   targetConfig?: {
     type: "s3";
@@ -52,6 +55,11 @@ const App: React.FC = () => {
   const [sftpPort, setSftpPort] = useState(22);
   const [sftpUsername, setSftpUsername] = useState("");
   const [sftpRemotePath, setSftpRemotePath] = useState("");
+  const [sftpAuthMethod, setSftpAuthMethod] = useState<"password" | "key">(
+    "password",
+  );
+  const [sftpPasswordSecretId, setSftpPasswordSecretId] = useState("");
+  const [sftpPrivateKeySecretId, setSftpPrivateKeySecretId] = useState("");
   const [s3Bucket, setS3Bucket] = useState("");
   const [s3Prefix, setS3Prefix] = useState("");
   const [savingConnection, setSavingConnection] = useState(false);
@@ -202,6 +210,15 @@ const App: React.FC = () => {
             port: sftpPort,
             username: sftpUsername.trim() || undefined,
             remotePath: sftpRemotePath.trim() || undefined,
+            authMethod: sftpAuthMethod,
+            passwordSecretId:
+              sftpAuthMethod === "password" && sftpPasswordSecretId.trim()
+                ? sftpPasswordSecretId.trim()
+                : undefined,
+            privateKeySecretId:
+              sftpAuthMethod === "key" && sftpPrivateKeySecretId.trim()
+                ? sftpPrivateKeySecretId.trim()
+                : undefined,
           },
           targetConfig: {
             type: "s3",
@@ -229,6 +246,9 @@ const App: React.FC = () => {
       setSftpPort(22);
       setSftpUsername("");
       setSftpRemotePath("");
+      setSftpAuthMethod("password");
+      setSftpPasswordSecretId("");
+      setSftpPrivateKeySecretId("");
       setS3Bucket("");
       setS3Prefix("");
     } catch (err) {
@@ -292,7 +312,16 @@ const App: React.FC = () => {
       });
 
       if (!res.ok) {
-        throw new Error(`Run transfer failed (${res.status})`);
+        let msg = `Run transfer failed (${res.status})`;
+        try {
+          const errBody = await res.json();
+          if (errBody && typeof errBody.message === "string") {
+            msg = `Run transfer failed: ${errBody.message}`;
+          }
+        } catch {
+          // ignore JSON parse errors and keep default message
+        }
+        throw new Error(msg);
       }
 
       const data = await res.json();
@@ -724,6 +753,32 @@ const App: React.FC = () => {
                     value={sftpRemotePath}
                     onChange={(e) => setSftpRemotePath(e.target.value)}
                   />
+                  <select
+                    value={sftpAuthMethod}
+                    onChange={(e) =>
+                      setSftpAuthMethod(e.target.value as "password" | "key")
+                    }
+                  >
+                    <option value="password">Auth: Password (Secrets Manager)</option>
+                    <option value="key">Auth: Private key (Secrets Manager)</option>
+                  </select>
+                  {sftpAuthMethod === "password" ? (
+                    <input
+                      type="text"
+                      placeholder="Secrets Manager secret id for password"
+                      value={sftpPasswordSecretId}
+                      onChange={(e) => setSftpPasswordSecretId(e.target.value)}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Secrets Manager secret id for private key"
+                      value={sftpPrivateKeySecretId}
+                      onChange={(e) =>
+                        setSftpPrivateKeySecretId(e.target.value)
+                      }
+                    />
+                  )}
                   <input
                     type="text"
                     placeholder="S3 bucket"

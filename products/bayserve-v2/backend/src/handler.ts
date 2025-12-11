@@ -5,6 +5,7 @@ import {
 import { listFlows, createFlow } from "./flows";
 import { explain } from "./ai";
 import { runTransferForFlow } from "./transfer";
+import { listJobs } from "./jobs";
 
 // You can override this later via env var if needed
 const allowedOrigin =
@@ -90,6 +91,12 @@ export const handler = async (
       const message = (err as Error).message || "Transfer failed";
       return jsonResponse(500, { message });
     }
+  }
+
+  // 3d) GET /jobs – list recent transfer jobs
+  if (method === "GET" && path === "/jobs") {
+    const jobs = await listJobs();
+    return jsonResponse(200, { items: jobs });
   }
 
   // 4) POST /ai/explain – call Bedrock-backed explainer

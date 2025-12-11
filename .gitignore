@@ -11,3 +11,8 @@ dist/
 .DS_Store
 products/bayserve-v2/backend/*.zip
 
+# Demo / local artifacts
+demo-sftp-key
+demo-sftp-key.pub
+tmp-demo/
+

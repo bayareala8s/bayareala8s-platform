@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 import SftpClient from "ssh2-sftp-client";
 import { getFlow, Flow, SftpSourceConfig, S3TargetConfig } from "./flows";
+import { putJobRecord } from "./jobs";
 import { log } from "./logger";
 
 const s3Client = new S3Client({});
@@ -48,7 +49,7 @@ function ensureConnectionConfigs(flow: Flow): {
   };
 }
 
-export async function runTransferForFlow(flowId: string): Promise<TransferSummary> {
+export async function runTransferForFlow(flowId: string): Promise<TransferSummary & { jobId: string }> {
   log("INFO", "Starting transfer for flow", { flowId });
 
   const flow = await getFlow(flowId);
@@ -57,6 +58,8 @@ export async function runTransferForFlow(flowId: string): Promise<TransferSummar
   }
 
   const { source, target } = ensureConnectionConfigs(flow);
+
+  const jobId = `job-${Date.now()}`;
 
   const password =
     source.authMethod === "password"
@@ -111,6 +114,19 @@ export async function runTransferForFlow(flowId: string): Promise<TransferSummar
       );
 
       transferred += 1;
+
+      const now = new Date().toISOString();
+      await putJobRecord({
+        job_id: jobId,
+        file_name: file.name,
+        tenant: "default",
+        flow_id: flowId,
+        status: "COMPLETED",
+        bucket,
+        key,
+        started_at: now,
+        completed_at: now,
+      });
     }
 
     log("INFO", "Transfer completed", {
@@ -125,6 +141,7 @@ export async function runTransferForFlow(flowId: string): Promise<TransferSummar
       filesTransferred: transferred,
       bucket,
       prefix,
+      jobId,
     };
   } finally {
     try {

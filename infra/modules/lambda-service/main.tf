@@ -12,6 +12,10 @@ variable "env"          { type = string }
 variable "artifact_path" { type = string }
 variable "flows_table_name" { type = string }
 variable "state_machine_arn" { type = string }
+variable "jobs_table_name" {
+  type    = string
+  default = ""
+}
 
 provider "aws" {
   region = "us-west-2"
@@ -110,6 +114,7 @@ resource "aws_lambda_function" "api" {
       PRODUCT_NAME           = var.product_name
       FLOWS_TABLE_NAME       = var.flows_table_name
       FLOW_STATE_MACHINE_ARN = var.state_machine_arn
+      JOBS_TABLE_NAME        = var.jobs_table_name
       BEDROCK_REGION         = "us-east-1"
       BEDROCK_MODEL_ID       = "anthropic.claude-3-sonnet-20240229-v1:0"
     }

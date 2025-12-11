@@ -60,6 +60,7 @@ module "bayserve_v2_lambda" {
   artifact_path     = var.lambda_artifact_path
   flows_table_name  = module.bayserve_v2_dynamodb.flows_table_name
   state_machine_arn = module.bayserve_v2_sfn.state_machine_arn
+  jobs_table_name   = module.bayflow_dynamodb.jobs_table_name
 }
 
 # API Gateway protected by Cognito

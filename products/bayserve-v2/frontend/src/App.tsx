@@ -78,6 +78,23 @@ const App: React.FC = () => {
   } | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
+  const [jobs, setJobs] = useState<
+    {
+      job_id: string;
+      file_name: string;
+      tenant: string;
+      flow_id: string;
+      status: string;
+      bucket: string;
+      key: string;
+      started_at: string;
+      completed_at: string;
+    }[]
+  >([]);
+
+  const [jobFilterFlowId, setJobFilterFlowId] = useState("");
+  const [jobFilterStatus, setJobFilterStatus] = useState<string>("");
+
   // Decode Cognito ID token to derive a stable user identifier for Settings
   const decodeJwt = (token: string | null) => {
     if (!token) return null;
@@ -378,6 +395,51 @@ const App: React.FC = () => {
       fetchSettings();
     }
   }, [tab, isAuthenticated, idToken]);
+
+  // Load jobs when Executions tab is opened
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!isAuthenticated || !idToken) {
+        setJobs([]);
+        return;
+      }
+
+      try {
+        setError(null);
+        const res = await fetch(`${apiBase}/jobs`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to load jobs (${res.status})`);
+        }
+
+        const data = await res.json();
+        setJobs(data.items || []);
+      } catch (err) {
+        console.error("Error loading jobs", err);
+        setError((err as Error).message || "Failed to load jobs");
+      }
+    };
+
+    if (tab === "executions") {
+      fetchJobs();
+    }
+  }, [tab, isAuthenticated, idToken]);
+
+  const filteredJobs = jobs.filter((job) => {
+    const matchesFlowId = jobFilterFlowId
+      ? job.flow_id.toLowerCase().includes(jobFilterFlowId.toLowerCase())
+      : true;
+    const matchesStatus = jobFilterStatus
+      ? job.status.toLowerCase() === jobFilterStatus.toLowerCase()
+      : true;
+    return matchesFlowId && matchesStatus;
+  });
+  const hasJobs = jobs.length > 0;
 
   return (
     <div
@@ -936,9 +998,218 @@ const App: React.FC = () => {
         {tab === "executions" && (
           <section>
             <h1>Executions</h1>
-            <p style={{ color: "#555" }}>
-              Coming soon: execution history and status.
-            </p>
+            {!isAuthenticated && !authLoading && (
+              <p style={{ color: "#b91c1c", marginTop: "0.75rem" }}>
+                Please sign in to view executions.
+              </p>
+            )}
+
+            {isAuthenticated && (
+              <>
+                <p style={{ color: "#555", marginTop: "0.5rem" }}>
+                  Recent transfer jobs (newest first).
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    marginTop: "0.75rem",
+                    marginBottom: "0.25rem",
+                    alignItems: "flex-end",
+                    flexWrap: "wrap",
+                    maxWidth: "900px",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "#4b5563",
+                        marginBottom: "0.2rem",
+                      }}
+                    >
+                      Filter by Flow ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. flow-1234"
+                      value={jobFilterFlowId}
+                      onChange={(e) => setJobFilterFlowId(e.target.value)}
+                      style={{
+                        padding: "0.35rem 0.6rem",
+                        borderRadius: "0.375rem",
+                        border: "1px solid #d1d5db",
+                        minWidth: "180px",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <label
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "#4b5563",
+                        marginBottom: "0.2rem",
+                      }}
+                    >
+                      Filter by Status
+                    </label>
+                    <select
+                      value={jobFilterStatus}
+                      onChange={(e) => setJobFilterStatus(e.target.value)}
+                      style={{
+                        padding: "0.35rem 0.6rem",
+                        borderRadius: "0.375rem",
+                        border: "1px solid #d1d5db",
+                        minWidth: "140px",
+                      }}
+                    >
+                      <option value="">All</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="FAILED">FAILED</option>
+                    </select>
+                  </div>
+                </div>
+                <table
+                  style={{
+                    borderCollapse: "collapse",
+                    width: "100%",
+                    maxWidth: "900px",
+                    marginTop: "0.75rem",
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <thead style={{ backgroundColor: "#f3f4f6" }}>
+                    <tr>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Job ID
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Flow ID
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        File name
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        S3 object
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Status
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Completed at
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredJobs.map((job) => (
+                      <tr key={`${job.job_id}-${job.file_name}`}>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                            fontFamily: "monospace",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          {job.job_id}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                            fontFamily: "monospace",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          {job.flow_id}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          {job.file_name}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                            fontFamily: "monospace",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          {job.bucket}/{job.key}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          {job.status}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          {job.completed_at}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredJobs.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          style={{
+                            padding: "0.75rem",
+                            textAlign: "center",
+                            color: "#777",
+                          }}
+                        >
+                          {hasJobs
+                            ? "No executions match the current filters."
+                            : "No executions found yet."}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </>
+            )}
           </section>
         )}
 

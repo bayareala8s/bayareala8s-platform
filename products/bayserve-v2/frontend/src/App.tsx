@@ -339,7 +339,7 @@ const App: React.FC = () => {
         }}
       >
         <h2 style={{ marginBottom: "1rem", fontSize: "1.15rem" }}>
-          BayServe v2
+          BayServe
         </h2>
 
         {/* Auth status */}

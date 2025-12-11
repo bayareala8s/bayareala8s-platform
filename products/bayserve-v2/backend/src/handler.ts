@@ -4,6 +4,7 @@ import {
 } from "aws-lambda";
 import { listFlows, createFlow } from "./flows";
 import { explain } from "./ai";
+import { runTransferForFlow } from "./transfer";
 
 // You can override this later via env var if needed
 const allowedOrigin =
@@ -71,6 +72,24 @@ export const handler = async (
     const parsedBody = event.body ? JSON.parse(event.body) : {};
     const created = await createFlow(parsedBody);
     return jsonResponse(201, { item: created });
+  }
+
+  // 3c) POST /flows/{id}/run – trigger a file transfer for a connection
+  if (method === "POST" && path.startsWith("/flows/") && path.endsWith("/run")) {
+    const segments = path.split("/").filter(Boolean); // ["flows", ":id", "run"]
+    const flowId = segments[1];
+
+    if (!flowId) {
+      return jsonResponse(400, { message: "Missing flow id" });
+    }
+
+    try {
+      const summary = await runTransferForFlow(flowId);
+      return jsonResponse(200, { summary });
+    } catch (err) {
+      const message = (err as Error).message || "Transfer failed";
+      return jsonResponse(500, { message });
+    }
   }
 
   // 4) POST /ai/explain – call Bedrock-backed explainer

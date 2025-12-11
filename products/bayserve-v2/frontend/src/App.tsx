@@ -276,6 +276,36 @@ const App: React.FC = () => {
     }
   };
 
+  const runConnection = async (connectionId: string) => {
+    try {
+      setError(null);
+
+      if (!isAuthenticated || !idToken) {
+        throw new Error("You must be signed in to run a transfer.");
+      }
+
+      const res = await fetch(`${apiBase}/flows/${connectionId}/run`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Run transfer failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      console.log("Transfer summary", data.summary);
+      alert(
+        `Transfer started/completed. Files transferred: ${data.summary?.filesTransferred ?? "unknown"}`
+      );
+    } catch (err) {
+      console.error("Error running transfer", err);
+      setError((err as Error).message || "Run transfer failed");
+    }
+  };
+
   /**
    * When the active tab is "flows" and auth is ready, load flows.
    */
@@ -730,7 +760,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <h2 style={{ marginTop: "1.5rem" }}>Existing flows (all)</h2>
+                <h2 style={{ marginTop: "1.5rem" }}>Existing connections</h2>
                 <table
                   style={{
                     borderCollapse: "collapse",
@@ -766,10 +796,20 @@ const App: React.FC = () => {
                       >
                         S3 bucket
                       </th>
+                      <th
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {flows.map((conn) => (
+                    {flows
+                      .filter((conn) => conn.type === "CONNECTION")
+                      .map((conn) => (
                       <tr key={conn.id}>
                         <td
                           style={{
@@ -795,12 +835,32 @@ const App: React.FC = () => {
                         >
                           {conn.targetConfig?.bucket || "-"}
                         </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          <button
+                            onClick={() => runConnection(conn.id)}
+                            style={{
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "0.375rem",
+                              border: "1px solid #d1d5db",
+                              backgroundColor: "white",
+                              cursor: "pointer",
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            Run transfer
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {flows.length === 0 && (
                       <tr>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           style={{
                             padding: "0.75rem",
                             textAlign: "center",

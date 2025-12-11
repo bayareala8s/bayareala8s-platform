@@ -11,9 +11,12 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.624.0",
     "@aws-sdk/client-dynamodb": "^3.624.0",
+    "@aws-sdk/client-s3": "^3.624.0",
+    "@aws-sdk/client-secrets-manager": "^3.624.0",
     "@aws-sdk/client-sfn": "^3.624.0",
     "@aws-sdk/lib-dynamodb": "^3.624.0",
-    "aws-lambda": "^1.0.7"
+    "aws-lambda": "^1.0.7",
+    "ssh2-sftp-client": "^10.0.3"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.129",

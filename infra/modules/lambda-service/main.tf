@@ -68,6 +68,33 @@ resource "aws_iam_role_policy" "lambda_bedrock_invoke" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_s3_secrets" {
+  name = "${var.product_name}-${var.env}-lambda-s3-secrets"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_lambda_function" "api" {
   function_name = "${var.product_name}-${var.env}-api"
   role          = aws_iam_role.lambda_exec.arn
